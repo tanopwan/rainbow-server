@@ -20,6 +20,7 @@ import (
 type Server interface {
 	Start()
 	UseRedis() Server
+	UseCookieAuth() Server
 	RegisterMiddleware(m Middleware) Server
 	ServeTemplate(data interface{}, templates ...string) Server
 	DefaultMux() *http.ServeMux
