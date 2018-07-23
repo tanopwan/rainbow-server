@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 	"net/http"
 
@@ -24,5 +25,13 @@ func main() {
 			log.Printf("[log] middleware2 response\n")
 		})
 	})
-	server.NewServer(":8081").UseRedis().RegisterMiddleware(m1).RegisterMiddleware(m2).Start()
+
+	s := server.NewServer(":8081").UseRedis().RegisterMiddleware(m1).RegisterMiddleware(m2)
+	s.DefaultMux().HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+
+		io.WriteString(w, "Hello world, Bar\n")
+	})
+	s.Start()
 }

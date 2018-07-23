@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"database/sql"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -20,6 +19,7 @@ type Server interface {
 	Start()
 	UseRedis() Server
 	RegisterMiddleware(m Middleware) Server
+	DefaultMux() *http.ServeMux
 }
 
 type server struct {
@@ -32,8 +32,11 @@ type server struct {
 // NewServer ... return new server
 func NewServer(address string) Server {
 
+	mux := http.NewServeMux()
+
 	h := handler{
 		middlewares: make([]Middleware, 0),
+		mux:         mux,
 	}
 
 	return &server{
@@ -43,6 +46,11 @@ func NewServer(address string) Server {
 		},
 		handler: &h,
 	}
+}
+
+// DefaultMux ...
+func (s *server) DefaultMux() *http.ServeMux {
+	return s.handler.mux
 }
 
 // RegisterMiddleware ...
@@ -123,15 +131,13 @@ type Middleware func(http.Handler) http.Handler
 
 type handler struct {
 	middlewares []Middleware
+	mux         *http.ServeMux
 }
 
 func (a *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Handler\n")
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-
-		io.WriteString(w, "Hello world\n")
+		a.mux.ServeHTTP(w, r)
 	})
 
 	ms := http.Handler(h)
