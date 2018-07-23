@@ -24,9 +24,9 @@ func (a *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ms = m(ms)
 	}
 
-	log.Println("start request ===>")
+	log.Println(":rainbow: start request ===>")
 	ms.ServeHTTP(w, r)
-	log.Println("finish request <===")
+	log.Println(":rainbow: finish request <===")
 }
 
 func (a *handler) registerMiddleware(m Middleware) {
