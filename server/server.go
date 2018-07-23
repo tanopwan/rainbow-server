@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -19,6 +21,7 @@ type Server interface {
 	Start()
 	UseRedis() Server
 	RegisterMiddleware(m Middleware) Server
+	ServeTemplate(data interface{}, templates ...string) Server
 	DefaultMux() *http.ServeMux
 }
 
@@ -56,6 +59,18 @@ func (s *server) DefaultMux() *http.ServeMux {
 // RegisterMiddleware ...
 func (s *server) RegisterMiddleware(m Middleware) Server {
 	s.handler.registerMiddleware(m)
+	return s
+}
+
+// ServeTemplate ...
+func (s *server) ServeTemplate(data interface{}, templates ...string) Server {
+	s.DefaultMux().HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		t, err := template.ParseFiles(templates...)
+		if err != nil {
+			fmt.Println(err)
+		}
+		t.Execute(w, data)
+	})
 	return s
 }
 
