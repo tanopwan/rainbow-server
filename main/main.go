@@ -26,7 +26,7 @@ func main() {
 		})
 	})
 
-	s := rainbow.NewServer(":8081").UseRedis().RegisterMiddleware(m1).RegisterMiddleware(m2)
+	s := rainbow.NewServer(":8081").UseRedis().UseCookieAuth(nil).RegisterMiddleware(m1).RegisterMiddleware(m2)
 	s.DefaultMux().HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)

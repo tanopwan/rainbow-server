@@ -3,8 +3,11 @@ package rainbow
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -20,7 +23,7 @@ import (
 type Server interface {
 	Start()
 	UseRedis() Server
-	UseCookieAuth() Server
+	UseCookieAuth(userRepo UserRepository) Server
 	RegisterMiddleware(m Middleware) Server
 	ServeTemplate(data interface{}, templates ...string) Server
 	DefaultMux() *http.ServeMux
@@ -31,6 +34,7 @@ type server struct {
 	handler   *handler
 	redisPool *redis.Pool
 	db        *sql.DB
+	userRepo  UserRepository
 }
 
 // NewServer ... return new server
@@ -100,7 +104,14 @@ func (s *server) UseRedis() Server {
 	return s
 }
 
-func (s *server) UseCookieAuth() Server {
+func (s *server) UseCookieAuth(userRepo UserRepository) Server {
+	s.userRepo = userRepo
+	if s.userRepo == nil {
+		s.userRepo = NewInMemoryUserRepository()
+	}
+
+	authService := middleware.NewAuthService(s.redisPool)
+
 	config := middleware.DefaultConfig(s.redisPool)
 	config.ValidateUserFunc = func(userID string) bool {
 		if userID == "" {
@@ -108,11 +119,77 @@ func (s *server) UseCookieAuth() Server {
 			return true
 		}
 		log.Printf("[server] ValidateUserFunc UserID: %s\n", userID)
-		return true
+		return s.userRepo.Validate(userID)
 	}
 
 	m := middleware.NewHTTPDefaultMiddleware(config)
 	s.handler.middlewares = append(s.handler.middlewares, Middleware(m))
+
+	s.handler.mux.HandleFunc("/api/users/login", func(w http.ResponseWriter, r *http.Request) {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Printf("[server] error reading body: %v", err)
+			http.Error(w, "can't read body", http.StatusBadRequest)
+			return
+		}
+
+		b := struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		}{}
+
+		err = json.Unmarshal(body, &b)
+		if err != nil {
+			log.Printf("[server] error unmarshaling body: %v", err)
+			http.Error(w, "can't read body", http.StatusBadRequest)
+			return
+		}
+
+		userID, err := s.userRepo.Login(b.Username, b.Password)
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		authService.CreateLoginSession(userID)
+		w.Header().Del("Set-Cookie")
+		w.Header().Set("X-User-Id", userID)
+
+		log.Printf("[server] login success userID: %s\n", userID)
+		// Wait for middleware to write header
+		return
+	})
+
+	s.handler.mux.HandleFunc("/api/users/register", func(w http.ResponseWriter, r *http.Request) {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Printf("[server] error reading body: %v", err)
+			http.Error(w, "can't read body", http.StatusBadRequest)
+			return
+		}
+
+		b := struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		}{}
+
+		err = json.Unmarshal(body, &b)
+		if err != nil {
+			log.Printf("[server] error unmarshaling body: %v", err)
+			http.Error(w, "can't read body", http.StatusBadRequest)
+			return
+		}
+
+		userID, err := s.userRepo.Create(b.Username, b.Password)
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		log.Printf("[server] login success userID: %s\n", userID)
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "success: "+userID)
+	})
 	return s
 }
 

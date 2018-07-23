@@ -1,6 +1,7 @@
 package rainbow
 
 import (
+	"log"
 	"net/http"
 )
 
@@ -23,7 +24,9 @@ func (a *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ms = m(ms)
 	}
 
+	log.Println("start request ===>")
 	ms.ServeHTTP(w, r)
+	log.Println("finish request <===")
 }
 
 func (a *handler) registerMiddleware(m Middleware) {
