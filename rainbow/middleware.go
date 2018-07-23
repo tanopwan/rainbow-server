@@ -1,7 +1,6 @@
 package rainbow
 
 import (
-	"log"
 	"net/http"
 )
 
@@ -15,7 +14,6 @@ type handler struct {
 
 func (a *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Handler\n")
 		a.mux.ServeHTTP(w, r)
 	})
 
