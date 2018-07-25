@@ -33,6 +33,6 @@ func main() {
 
 		io.WriteString(w, "Hello world, Bar\n")
 	})
-	s.ServeTemplate(struct{ Name string }{Name: "Hello, Foo"}, "main/index.html")
+	s.ServeTemplate("/", struct{ Name string }{Name: "Hello, Foo"}, "main/index.html")
 	s.Start()
 }

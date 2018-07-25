@@ -25,7 +25,7 @@ type Server interface {
 	UseRedis() Server
 	UseCookieAuth(userRepo UserRepository) Server
 	RegisterMiddleware(m Middleware) Server
-	ServeTemplate(data interface{}, templates ...string) Server
+	ServeTemplate(path string, data interface{}, templates ...string) Server
 	DefaultMux() *http.ServeMux
 }
 
@@ -68,8 +68,8 @@ func (s *server) RegisterMiddleware(m Middleware) Server {
 }
 
 // ServeTemplate ...
-func (s *server) ServeTemplate(data interface{}, templates ...string) Server {
-	s.DefaultMux().HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+func (s *server) ServeTemplate(path string, data interface{}, templates ...string) Server {
+	s.DefaultMux().HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		t, err := template.ParseFiles(templates...)
 		if err != nil {
 			fmt.Println(err)
